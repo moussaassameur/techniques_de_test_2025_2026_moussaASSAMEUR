@@ -1,4 +1,4 @@
-# Techniques de test 2025/2026
+S# Techniques de test 2025/2026
 
 Forkez le repository pour pouvoir en faire votre version avec votre travail.  
 Le sujet du TP se trouve [ici](./TP/SUJET.md)
@@ -7,9 +7,9 @@ Le sujet du TP se trouve [ici](./TP/SUJET.md)
 
 Vous devez compléter cette partie pour qu'on puisse vous identifier.  
 
-Nom : XXXXX  
-Prénom : XXXXX  
-Groupe de TP : XXXXX (e.g. M1 ILSEN classique)  
+Nom : Assameur  
+Prénom : Moussa  
+Groupe de TP : M1 ILSEN classique  
 
 ## Remarques particulières
 
