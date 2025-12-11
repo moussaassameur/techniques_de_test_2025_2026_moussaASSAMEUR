@@ -2,112 +2,63 @@
 PLAN.md - Tests unitaires - Section 2: Cas de triangulation normale
 """
 
+"""
+PLAN.md - Tests unitaires - Section 2: Cas de triangulation normale
+
+Tests des fonctions de triangulation (sans API).
+- 3 points non alignés → 1 triangle
+- 10 points → Plusieurs triangles
+"""
+
 import pytest
-import requests
 import struct
+from triangulator_core import compute_triangulation, serialize_triangulation
 
 
 class TestNormalTriangulation:
     """Cas de triangulation normale"""
 
-    BASE_URL = "http://localhost:8000"
-    TRIANGULATOR = "/triangulation"
-    POINTSET_MGR = "/pointset"
-
-    def _register_pointset(self, points):
-        """Enregistrer un PointSet et retourner son ID"""
-        binary = struct.pack('<I', len(points))
-        for p in points:
-            binary += struct.pack('<ff', p["x"], p["y"])
-        resp = requests.post(
-            f"{self.BASE_URL}{self.POINTSET_MGR}",
-            data=binary,
-            headers={"Content-Type": "application/octet-stream"}
-        )
-        assert resp.status_code == 201
-        return resp.json()["pointSetId"]
-
     def test_three_non_collinear_points(self, sample_3_points):
         """
-        Cas testé: GET /triangulation/{uuid} avec 3 points non alignés
-        Résultat attendu: 200 + Binary format valide avec 1 triangle
+        Cas testé: 3 points non alignés
+        Résultat attendu: 1 triangle avec indices (0, 1, 2)
         Raison: Confirmer que le service triangule correctement le cas minimal.
-        
-        À tester:
-        - Status HTTP = 200
-        - Content-Type = "application/octet-stream"
-        - Binary parse: 3 vertices + 1 triangle
-        - Indices triangle = [0, 1, 2]
         """
-        pointset_id = self._register_pointset(sample_3_points)
-        resp = requests.get(f"{self.BASE_URL}{self.TRIANGULATOR}/{pointset_id}")
-        assert resp.status_code == 200
-        assert resp.headers.get("Content-Type") == "application/octet-stream"
+        verts, tris = compute_triangulation(sample_3_points)
         
-        binary = resp.content
-        n_verts = struct.unpack('<I', binary[0:4])[0]
-        assert n_verts == 3
-        
-        n_tri_off = 4 + n_verts * 8
-        n_tris = struct.unpack('<I', binary[n_tri_off:n_tri_off+4])[0]
-        assert n_tris == 1
+        assert len(verts) == 3, "Should have 3 vertices"
+        assert len(tris) == 1, "Should have exactly 1 triangle"
+        assert tris[0] == (0, 1, 2), "Triangle should connect all 3 points"
 
     def test_triangulation_10_points(self, sample_10_points):
         """
-        Cas testé: GET /triangulation/{uuid} avec 10 points
-        Résultat attendu: 200 + Binary avec plusieurs triangles
+        Cas testé: 10 points non colinéaires
+        Résultat attendu: Plusieurs triangles créés (n-2 = 8 triangles en fan)
         Raison: Valider que la triangulation fonctionne sur des ensembles standards.
-        
-        À tester:
-        - Status HTTP = 200
-        - Nombre de vertices = 10
-        - Nombre de triangles > 1
-        - Tous les triangles ont indices valides
         """
-        pointset_id = self._register_pointset(sample_10_points)
-        resp = requests.get(f"{self.BASE_URL}{self.TRIANGULATOR}/{pointset_id}")
-        assert resp.status_code == 200
+        verts, tris = compute_triangulation(sample_10_points)
         
-        binary = resp.content
-        n_verts = struct.unpack('<I', binary[0:4])[0]
-        assert n_verts == 10
+        assert len(verts) == 10, "Should have 10 unique vertices"
+        assert len(tris) == 8, "Fan triangulation: n-2 = 8 triangles"
         
-        n_tri_off = 4 + n_verts * 8
-        n_tris = struct.unpack('<I', binary[n_tri_off:n_tri_off+4])[0]
-        assert n_tris > 1
-        
-        # Vérifier les indices des triangles
-        tris_data = binary[n_tri_off + 4:]
-        for i in range(n_tris):
-            idx1, idx2, idx3 = struct.unpack('<III', tris_data[i*12:(i+1)*12])
-            assert 0 <= idx1 < n_verts
-            assert 0 <= idx2 < n_verts
-            assert 0 <= idx3 < n_verts
+        # Vérifier que tous les indices des triangles sont valides
+        for tri in tris:
+            a, b, c = tri
+            assert 0 <= a < len(verts), f"Index {a} out of bounds"
+            assert 0 <= b < len(verts), f"Index {b} out of bounds"
+            assert 0 <= c < len(verts), f"Index {c} out of bounds"
 
-    def test_binary_format_structure(self):
+    def test_triangle_vertex_references_valid(self, sample_10_points):
         """
-        Cas testé: Parser le format binary de la réponse
-        Résultat attendu: Structure correcte (N vertices + indices triangles)
-        Raison: Assurer la fidélité du format binary.
-        
-        À tester:
-        - Premiers 4 bytes = N (nombre vertices)
-        - Suivants N*8 bytes = vertices (X,Y floats)
-        - Suivants 4 bytes = T (nombre triangles)
-        - Suivants T*12 bytes = triangles (3 indices)
+        Cas testé: Tous les indices de triangles pointent vers des vertices valides
+        Résultat attendu: Aucun index invalide
+        Raison: Assurer l'intégrité des données de triangulation.
         """
-        points = [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 0.5, "y": 1.0}]
-        pointset_id = self._register_pointset(points)
-        resp = requests.get(f"{self.BASE_URL}{self.TRIANGULATOR}/{pointset_id}")
-        assert resp.status_code == 200
+        verts, tris = compute_triangulation(sample_10_points)
+        n_verts = len(verts)
         
-        binary = resp.content
-        n_verts = struct.unpack('<I', binary[0:4])[0]
-        assert n_verts > 0
-        
-        verts_end = 4 + n_verts * 8
-        n_tris = struct.unpack('<I', binary[verts_end:verts_end+4])[0]
-        assert n_tris >= 0
-        
-        tris_end = verts_end + 4 + n_tris * 12
-        assert len(binary) == tris_end
+        for tri_idx, (a, b, c) in enumerate(tris):
+            assert 0 <= a < n_verts, f"Triangle {tri_idx}: index a={a} invalid"
+            assert 0 <= b < n_verts, f"Triangle {tri_idx}: index b={b} invalid"
+            assert 0 <= c < n_verts, f"Triangle {tri_idx}: index c={c} invalid"
+            assert a != b and b != c and a != c, f"Triangle {tri_idx}: has duplicate indices"
