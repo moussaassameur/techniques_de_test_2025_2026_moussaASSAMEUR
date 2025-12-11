@@ -27,9 +27,6 @@ Exemples :
 
 ## Tests unitaires
 ### 1. Gestion des erreurs et cas impossibles
-Cas testé : PointSetId inexistant → Résultat attendu : Retour erreur / exception  
-**Raison de réalisation** : Vérifier que le service renvoie correctement une erreur lorsqu’un identifiant invalide est fourni.
-
 Cas testé : 0 point → Résultat attendu : Erreur  
 **Raison de réalisation** : Assurer que la triangulation ne peut pas se faire sans points.
 
@@ -78,11 +75,20 @@ Cas testé : API /healthz → Résultat attendu : 200 + “ok”
 **Raison de réalisation** : Confirmer que le service est opérationnel.
 
 ### 2. Gestion d’erreur API
-Cas testé : API /triangulate avec ID inexistant → Résultat attendu : 400 Bad Request  
-**Raison de réalisation** : Vérifier la gestion des identifiants invalides.
+- Cas testé : API `/triangulate` avec ID valide → Résultat attendu : `200 OK`  
+  **Raison de réalisation** : Vérifier la réponse correcte en cas de succès.
 
-Cas testé : API /triangulate avec point invalide → Résultat attendu : 422 ou 400  
-**Raison de réalisation** : Garantir la robustesse face à des points incorrects ou dupliqués.
+- Cas testé : API `/triangulate` avec UUID malformé → Résultat attendu : `400 Bad Request`  
+  **Raison de réalisation** : Garantir la robustesse contre les formats invalides.
+
+- Cas testé : API `/triangulate` avec ID inexistant → Résultat attendu : `404 Not Found`  
+  **Raison de réalisation** : Vérifier la gestion quand le `PointSetID` n'existe pas.
+
+- Cas testé : API `/triangulate` provoquant une erreur interne → Résultat attendu : `500 Internal Server Error`  
+  **Raison de réalisation** : Vérifier le format d'erreur en cas de bug/exception côté serveur.
+
+- Cas testé : Service indisponible / surcharge → Résultat attendu : `503 Service Unavailable`  
+  **Raison de réalisation** : Confirmer le comportement et le format d'erreur lorsque le service est indisponible.
 
 ### 3. Stabilité et charge
 Cas testé : Plusieurs requêtes simultanées → Résultat attendu : Pas d’erreur ni de blocage  
