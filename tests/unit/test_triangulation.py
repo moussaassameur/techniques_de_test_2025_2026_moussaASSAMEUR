@@ -1,47 +1,38 @@
-"""
-PLAN.md - Tests unitaires - Section 2: Cas de triangulation normale
+"""PLAN.md - Tests unitaires - Section 2: Cas de triangulation normale.
+
+Tests des fonctions de triangulation.
+- 3 points non alignes -> 1 triangle
+- 10 points -> Plusieurs triangles
 """
 
-"""
-PLAN.md - Tests unitaires - Section 2: Cas de triangulation normale
-
-Tests des fonctions de triangulation (sans API).
-- 3 points non alignés → 1 triangle
-- 10 points → Plusieurs triangles
-"""
-
-import pytest
-import struct
-from triangulator_core import compute_triangulation, serialize_triangulation
+from triangulator_core import compute_triangulation
 
 
 class TestNormalTriangulation:
-    """Cas de triangulation normale"""
+    """Cas de triangulation normale."""
 
     def test_three_non_collinear_points(self, sample_3_points):
-        """
-        Cas testé: 3 points non alignés
-        Résultat attendu: 1 triangle avec indices (0, 1, 2)
+        """Teste 3 points non alignes -> 1 triangle avec indices (0, 1, 2).
+
         Raison: Confirmer que le service triangule correctement le cas minimal.
         """
         verts, tris = compute_triangulation(sample_3_points)
-        
+
         assert len(verts) == 3, "Should have 3 vertices"
         assert len(tris) == 1, "Should have exactly 1 triangle"
         assert tris[0] == (0, 1, 2), "Triangle should connect all 3 points"
 
     def test_triangulation_10_points(self, sample_10_points):
-        """
-        Cas testé: 10 points non colinéaires
-        Résultat attendu: Plusieurs triangles créés (n-2 = 8 triangles en fan)
+        """Teste 10 points non colineaires -> n-2 = 8 triangles en fan.
+
         Raison: Valider que la triangulation fonctionne sur des ensembles standards.
         """
         verts, tris = compute_triangulation(sample_10_points)
-        
+
         assert len(verts) == 10, "Should have 10 unique vertices"
         assert len(tris) == 8, "Fan triangulation: n-2 = 8 triangles"
-        
-        # Vérifier que tous les indices des triangles sont valides
+
+        # Verifier que tous les indices des triangles sont valides
         for tri in tris:
             a, b, c = tri
             assert 0 <= a < len(verts), f"Index {a} out of bounds"
@@ -49,16 +40,17 @@ class TestNormalTriangulation:
             assert 0 <= c < len(verts), f"Index {c} out of bounds"
 
     def test_triangle_vertex_references_valid(self, sample_10_points):
-        """
-        Cas testé: Tous les indices de triangles pointent vers des vertices valides
-        Résultat attendu: Aucun index invalide
-        Raison: Assurer l'intégrité des données de triangulation.
+        """Teste que tous les indices de triangles pointent vers des vertices valides.
+
+        Raison: Assurer l'integrite des donnees de triangulation.
         """
         verts, tris = compute_triangulation(sample_10_points)
         n_verts = len(verts)
-        
+
         for tri_idx, (a, b, c) in enumerate(tris):
             assert 0 <= a < n_verts, f"Triangle {tri_idx}: index a={a} invalid"
             assert 0 <= b < n_verts, f"Triangle {tri_idx}: index b={b} invalid"
             assert 0 <= c < n_verts, f"Triangle {tri_idx}: index c={c} invalid"
-            assert a != b and b != c and a != c, f"Triangle {tri_idx}: has duplicate indices"
+            assert (
+                a != b and b != c and a != c
+            ), f"Triangle {tri_idx}: has duplicate indices"
